@@ -42,7 +42,7 @@ export default NextAuth({
           )
         )
         return true
-      } catch {
+      } catch (err) {
         return false
       }
 
