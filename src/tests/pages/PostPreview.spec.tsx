@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react'
 
 import { mocked } from 'ts-jest/utils';
-import { getSession } from 'next-auth/client';
+import { useSession } from 'next-auth/client';
 
 import { getPrismicClient } from '../../services/prismic';
-import Post, { getServerSideProps } from '../../pages/posts/[slug]'
+import Post, { getStaticProps } from '../../pages/posts/preview/[slug]'
+import { useRouter } from 'next/router';
 
 const post =
 {
@@ -15,39 +16,42 @@ const post =
 }
 
 jest.mock('next-auth/client')
+jest.mock('next/router')
 jest.mock('../../services/prismic')
 
-describe('Post page', () => {
+describe('Post Preview page', () => {
   it('renders correctly', () => {
+    const useSessionMocked = mocked(useSession)
+    useSessionMocked.mockReturnValueOnce([null, false])
+
     render(<Post post={post} />)
 
     expect(screen.getByText('fake-title')).toBeInTheDocument()
     expect(screen.getByText('fake-content')).toBeInTheDocument()
+    expect(screen.getByText('Wanna continue reading?')).toBeInTheDocument()
   });
 
-  it('redirects user if no subscription is found', async () => {
+  it('redirects user to full post when is subscribed', async () => {
+    const useSessionMocked = mocked(useSession)
+    const useRouterMocked = mocked(useRouter)
+    const pushMocked = jest.fn()
 
-    const getSessionMocked = mocked(getSession)
+    useSessionMocked.mockReturnValueOnce([
+      { activeSubscription: 'fake-activeSubscription' },
+      false
+    ] as any)
 
-    getSessionMocked.mockResolvedValueOnce(null)
-
-    const response = await getServerSideProps({
-      params: { slug: 'fake-slug' }
+    useRouterMocked.mockReturnValueOnce({
+      push: pushMocked
     } as any)
 
-    expect(response).toEqual(
-      expect.objectContaining({
-        redirect: expect.objectContaining({
-          destination: `/posts/preview/${post.slug}`,
-        })
-      })
-    )
+    render(<Post post={post} />);
+
+    expect(pushMocked).toHaveBeenCalledWith('/posts/fake-slug')
   });
 
   it('loads initial data', async () => {
-    const getSessionMocked = mocked(getSession)
     const getPrismicClientMocked = mocked(getPrismicClient)
-
 
     getPrismicClientMocked.mockReturnValueOnce({
       getByUID: jest.fn().mockResolvedValueOnce({
@@ -59,13 +63,7 @@ describe('Post page', () => {
       })
     } as any)
 
-    getSessionMocked.mockResolvedValueOnce({
-      activeSubscription: 'fake-activeSubscription'
-    } as any)
-
-    const response = await getServerSideProps({
-      params: { slug: 'fake-slug' }
-    } as any)
+    const response = await getStaticProps({ params: { slug: 'fake-slug' } })
 
     expect(response).toEqual(
       expect.objectContaining({
@@ -79,7 +77,5 @@ describe('Post page', () => {
         }
       })
     )
-
   })
-
 })
