@@ -5,6 +5,8 @@ import { signIn, useSession } from 'next-auth/client'
 import { useRouter } from 'next/router'
 
 import { SubscribeButton } from '.'
+import { getStripeJs } from '../../services/stripe-js'
+import { api } from '../../services/api'
 
 jest.mock('next-auth/client')
 
@@ -67,6 +69,7 @@ describe('SubscribeButton Component', () => {
 
     expect(pushMock).toHaveBeenCalledWith('/posts')
   })
+
 })
 
 
